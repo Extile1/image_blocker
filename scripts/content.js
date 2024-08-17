@@ -34,26 +34,23 @@ let observer = new MutationObserver(function (mutations) {
         if (!result.toggle) return;
 
         for (var i = 0; i < mutation.addedNodes.length; i++) {
-            let node = mutation.addedNodes[i];
-            if (!node.classList) continue;
-            let classes = node.classList.values();
+            const node = mutation.addedNodes[i];
+            const parent = node.parentElement;
+            if (!parent) continue; // The top-level document is almost definitely not a message
 
-            let flag = false;
-            for (const className of classes) {
-                if (className.startsWith("messageListItem_")) {
-                    flag = true;
-                    break;
-                }
-            }
+            // Searches all sibling nodes as well which is janky, but not that much less efficient
+            const messageListItems = parent.querySelectorAll("li[class^=messageListItem_]");
 
-            if (!flag || !checkAuthor(node)) continue;
+            messageListItems.forEach((messageListItem) => {
+                if (!checkAuthor(messageListItem)) return;
 
-            const message = node.querySelector("div[class^=message_]");
-            if (!message) continue;
+                const message = messageListItem.querySelector("div[class^=message_]");
+                if (!message) return;
 
-            const accessories = message.querySelector("div[id^=message-accessories-]");
-            if (!accessories) continue;
-            accessories.remove();
+                const accessories = message.querySelector("div[id^=message-accessories-]");
+                if (!accessories) return;
+                accessories.remove();
+            })
         }
     });
 });

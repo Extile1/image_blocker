@@ -12,8 +12,10 @@
         {
             "js": ["scripts/content.js"],
             "matches": [
-                "https://discord.com/channels/*"
-            ]
+                "https://discord.com/*",
+                "https://discord.app/*"
+            ],
+            "run_at": "document_idle"
         }
     ],
     "background": {

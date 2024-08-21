@@ -24,38 +24,43 @@ function checkAuthor(messageListItem) {
     }
 }
 
+// filters out messages that are children of node, not including node
+async function filterMessages(node) {
+    let result = await chrome.storage.local.get({"toggle": false});
+    if (!result.toggle) return;
+
+    // Searches all sibling nodes as well which is janky, but not that much less efficient
+    const messageListItems = node.querySelectorAll("li[class^=messageListItem_]");
+
+    messageListItems.forEach((messageListItem) => {
+        if (!checkAuthor(messageListItem)) return;
+
+        const message = messageListItem.querySelector("div[class^=message_]");
+        if (!message) return;
+
+        const accessories = message.querySelector("div[id^=message-accessories-]");
+        if (!accessories) return;
+        accessories.remove();
+    })
+}
+
 let observer = new MutationObserver(function (mutations) {
-    mutations.forEach(async function (mutation) {
+    mutations.forEach(function (mutation) {
         if (!mutation.addedNodes) {
             return;
         }
 
-        let result = await chrome.storage.local.get({"toggle": false});
-        if (!result.toggle) return;
-
         for (var i = 0; i < mutation.addedNodes.length; i++) {
-            const node = mutation.addedNodes[i];
-            const parent = node.parentElement;
-            if (!parent) continue; // The top-level document is almost definitely not a message
+            let node = mutation.addedNodes[i];
+            node = node.parentElement ? node.parentElement : node;
 
-            // Searches all sibling nodes as well which is janky, but not that much less efficient
-            const messageListItems = parent.querySelectorAll("li[class^=messageListItem_]");
-
-            messageListItems.forEach((messageListItem) => {
-                if (!checkAuthor(messageListItem)) return;
-
-                const message = messageListItem.querySelector("div[class^=message_]");
-                if (!message) return;
-
-                const accessories = message.querySelector("div[id^=message-accessories-]");
-                if (!accessories) return;
-                accessories.remove();
-            })
+            filterMessages(node);
         }
     });
 });
 
 observer.observe(document.body, {
     childList: true,
-    subtree: true
+    subtree: true,
+    attributes: true
 });

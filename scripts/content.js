@@ -2,10 +2,10 @@
 // Doesn't work if you click on the reply to an image
 // Doesn't work for images within searches
 
-const target_id = "275277478787022848";
+const target_ids = ["275277478787022848", "334509537262567424"];
 
 // message must have "messageListItem_*" as the class
-// return true if message is from the target, otherwise returns false
+// return true if message is from any target, otherwise returns false
 function checkAuthor(messageListItem) {
     if (!messageListItem) return false;
 
@@ -20,7 +20,12 @@ function checkAuthor(messageListItem) {
         const prev = messageListItem.previousElementSibling;
         return checkAuthor(prev);
     } else {
-        return avatar.src.includes(target_id);
+        for (let target_id of target_ids) {
+            if (avatar.src.includes(target_id)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 

@@ -87,6 +87,11 @@ function filterMedia(media, ancestors, toggle) {
                 let url = media.src;
                 let link = document.createElement("a");
                 link.href = url;
+                if (url.startsWith("https://media.discordapp.net/attachments/")) {
+                    let i = url.lastIndexOf("/") + 1;
+                    let j = url.lastIndexOf("?");
+                    url = url.substr(i, j-i);
+                }
                 link.textContent = url;
                 accessories.appendChild(link);
             }

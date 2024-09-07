@@ -29,10 +29,20 @@ function checkAuthor(messageListItem) {
     }
 }
 
+// finds image and video elements at all nestings
+function findImages(node, res = null) {
+    res ||= [];
+    if (node.nodeName === "IMG" || node.nodeName == "VIDEO") res.push(node);
+    for (let child of node.children) {
+        findImages(child, res);
+    }
+    return res;
+}
+
 // filters out messages that are children of node, not including node
 async function filterMessages(node) {
-    let result = await chrome.storage.local.get({"toggle": false});
-    if (!result.toggle) return;
+    let toggle = (await chrome.storage.local.get({"toggle": 0})).toggle;
+    if (toggle === 0) return;
 
     // Searches all sibling nodes as well which is janky, but not that much less efficient
     const messageListItems = node.querySelectorAll("li[class^=messageListItem_]");
@@ -45,8 +55,38 @@ async function filterMessages(node) {
 
         const accessories = message.querySelector("div[id^=message-accessories-]");
         if (!accessories) return;
-        accessories.remove();
-    })
+        
+        // hide image
+        switch (toggle) {
+            case 1: { // hide
+                let block = document.createElement("div");
+                block.style.width = "auto";
+                block.style.height = "20px";
+                block.style.backgroundColor = "black";
+                accessories.replaceWith(block);
+            } break;
+            case 2: { // url
+                for (let child of accessories.children) {
+                    child.style.display = "none";
+                }
+                for (let image of findImages(accessories)) {
+                    function addUrl() {
+                        let url = image.src;
+                        let link = document.createElement("a");
+                        link.href = url;
+                        link.textContent = url;
+                        accessories.appendChild(link);
+                    }
+                    image.complete ? addUrl() : image.addEventListener("load", addUrl);
+                }
+            } break;
+            case 3: { // blur
+                for (let image of findImages(accessories)) {
+                    image.style.filter = "blur(50px)";
+                }
+            } break;
+        }
+    });
 }
 
 let observer = new MutationObserver(function (mutations) {

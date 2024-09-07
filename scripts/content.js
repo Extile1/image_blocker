@@ -39,74 +39,125 @@ function findImages(node, res = null) {
     return res;
 }
 
-// filters out messages that are children of node, not including node
-async function filterMessages(node) {
+function classHas(element, prefix) {
+    if (!(element instanceof Element)) return false;
+
+    for (const className of element.classList) {
+        if (className.startsWith(prefix)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// filter leaves
+async function filterLeaf(node, ancestors, toggle) {
+    // determine if is media
+    if (!["IMG", "VIDEO"].includes(node.nodeName)) return;
+
+    console.log(ancestors);
+    
+    // find messageListItem
+    let mliIndex = ancestors.length - 1; // index of messageListItem in ancestors
+    function validMessageListItem(element) {
+        return element.nodeName === "LI" && element.id.startsWith("chat-messages-") && classHas(element, "messageListItem_");
+    }
+    while (mliIndex >= 0 && !validMessageListItem(ancestors[mliIndex])) {
+        --mliIndex;
+    }
+    if (mliIndex < 0) return;
+
+    if (!checkAuthor(ancestors[mliIndex])) return;
+
+    let accessories = ancestors[mliIndex + 2];
+    if (!accessories || !accessories.id.startsWith("message-accessories-"))
+        return;
+
+    let mediaWrapper = ancestors[mliIndex + 3];
+    if (!mediaWrapper || !(classHas(mediaWrapper, "embedWrapper_") || classHas(mediaWrapper, "visualMediaItemContainer_")))
+        return;
+
+    // filter media
+    switch (toggle) {
+        case 1: { // blank
+            mediaWrapper.remove();
+        } break;
+        case 2: { // hide
+            let block = document.createElement("div");
+            if (findImages(accessories).length > 0) {
+                block.style.width = "500px";
+                block.style.height = "20px";
+                block.style.backgroundColor = "black";
+                mediaWrapper.replaceWith(block);
+            }
+        } break;
+        case 3: { // url
+            for (let child of accessories.children) {
+                child.style.display = "none";
+            }
+            for (let image of findImages(accessories)) {
+                function addUrl() {
+                    let url = image.src;
+                    let link = document.createElement("a");
+                    link.href = url;
+                    link.textContent = url;
+                    mediaWrapper.appendChild(link);
+                }
+                image.complete ? addUrl() : image.addEventListener("load", addUrl);
+            }
+        } break;
+        case 4: { // blur
+            for (let image of findImages(accessories)) {
+                image.style.filter = "blur(50px)";
+            }
+        } break;
+    }
+}
+
+async function filterMutations(mutations) {
     let toggle = (await chrome.storage.local.get({"toggle": 0})).toggle;
     if (toggle === 0) return;
 
-    // Searches all sibling nodes as well which is janky, but not that much less efficient
-    const messageListItems = node.querySelectorAll("li[class^=messageListItem_]");
-
-    messageListItems.forEach((messageListItem) => {
-        if (!checkAuthor(messageListItem)) return;
-
-        const message = messageListItem.querySelector("div[class^=message_]");
-        if (!message) return;
-
-        const accessories = message.querySelector("div[id^=message-accessories-]");
-        if (!accessories) return;
-        
-        // hide image
-        switch (toggle) {
-            case 1: { // blank
-                accessories.remove();
-            } break;
-            case 2: { // hide
-                let block = document.createElement("div");
-                if (findImages(accessories).length > 0) {
-                    block.style.width = "auto";
-                    block.style.height = "20px";
-                    block.style.backgroundColor = "black";
-                    accessories.replaceWith(block);
-                }
-            } break;
-            case 3: { // url
-                for (let child of accessories.children) {
-                    child.style.display = "none";
-                }
-                for (let image of findImages(accessories)) {
-                    function addUrl() {
-                        let url = image.src;
-                        let link = document.createElement("a");
-                        link.href = url;
-                        link.textContent = url;
-                        accessories.appendChild(link);
-                    }
-                    image.complete ? addUrl() : image.addEventListener("load", addUrl);
-                }
-            } break;
-            case 4: { // blur
-                for (let image of findImages(accessories)) {
-                    image.style.filter = "blur(50px)";
-                }
-            } break;
-        }
-    });
-}
-
-let observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
         if (!mutation.addedNodes) {
             return;
         }
 
-        for (var i = 0; i < mutation.addedNodes.length; i++) {
-            let node = mutation.addedNodes[i];
-            node = node.parentElement ? node.parentElement : node;
+        for (let node of mutation.addedNodes) {
+            if (node.nodeType !== Node.ELEMENT_NODE)
+                continue;
 
-            filterMessages(node);
+            // find ancestors
+            let ancestors = [];
+            let curr = node.parentElement;
+            while (curr) {
+                ancestors.push(curr);
+                curr = curr.parentElement;
+            }
+            ancestors.reverse();
+
+            // filter leaves
+            function filterLeafElements(element) {
+                if (element.children.length === 0) {
+                    filterLeaf(element, ancestors, toggle);
+                    return;
+                }
+                
+                ancestors.push(element);
+                for (let child of element.children) {
+                    filterLeafElements(child);
+                }
+                ancestors.pop();
+            }
+
+            filterLeafElements(node);
         }
     });
+}
+
+let observer = new MutationObserver(function (mutations) {
+    filterMutations(mutations);
 });
 
 observer.observe(document.body, {
@@ -114,3 +165,6 @@ observer.observe(document.body, {
     subtree: true,
     attributes: true
 });
+
+// filter loaded parts of DOM
+filterMutations([{addedNodes: [document.documentElement]}]);

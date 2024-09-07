@@ -29,16 +29,6 @@ function checkAuthor(messageListItem) {
     }
 }
 
-// finds image and video elements at all nestings
-function findImages(node, res = null) {
-    res ||= [];
-    if (node.nodeName === "IMG" || node.nodeName == "VIDEO") res.push(node);
-    for (let child of node.children) {
-        findImages(child, res);
-    }
-    return res;
-}
-
 function classHas(element, prefix) {
     if (!(element instanceof Element)) return false;
 
@@ -51,30 +41,29 @@ function classHas(element, prefix) {
     return false;
 }
 
-// filter leaves
-async function filterLeaf(node, ancestors, toggle) {
-    // determine if is media
-    if (!["IMG", "VIDEO"].includes(node.nodeName)) return;
-
-    console.log(ancestors);
-    
-    // find messageListItem
-    let mliIndex = ancestors.length - 1; // index of messageListItem in ancestors
+// find index of messageListItem in ancestors
+// treats searchResult as messageListItem (second boolean is true when this is the case)
+function getMliIndex(ancestors) {
+    let mliIndex = ancestors.length - 1;
     function validMessageListItem(element) {
-        return element.nodeName === "LI" && element.id.startsWith("chat-messages-") && classHas(element, "messageListItem_");
+        return (element.nodeName === "LI" && element.id.startsWith("chat-messages-") && classHas(element, "messageListItem_"))
+            || (element.nodeName === "DIV" && classHas(element, "searchResult_"));
     }
     while (mliIndex >= 0 && !validMessageListItem(ancestors[mliIndex])) {
         --mliIndex;
     }
-    if (mliIndex < 0) return;
+    return [mliIndex, mliIndex >= 0 && ancestors[mliIndex].nodeName === "DIV"];
+}
 
-    if (!checkAuthor(ancestors[mliIndex])) return;
+function filterMedia(media, ancestors, toggle) {
+    let [mliIndex, inSearch] = getMliIndex(ancestors);
+    if (mliIndex < 0 || !checkAuthor(ancestors[mliIndex])) return;
 
-    let accessories = ancestors[mliIndex + 2];
+    let accessories = ancestors[mliIndex + 2 + inSearch];
     if (!accessories || !accessories.id.startsWith("message-accessories-"))
         return;
 
-    let mediaWrapper = ancestors[mliIndex + 3];
+    let mediaWrapper = ancestors[mliIndex + 3 + inSearch];
     if (!mediaWrapper || !(classHas(mediaWrapper, "embedWrapper_") || classHas(mediaWrapper, "visualMediaItemContainer_")))
         return;
 
@@ -85,32 +74,26 @@ async function filterLeaf(node, ancestors, toggle) {
         } break;
         case 2: { // hide
             let block = document.createElement("div");
-            if (findImages(accessories).length > 0) {
-                block.style.width = "500px";
-                block.style.height = "20px";
-                block.style.backgroundColor = "black";
-                mediaWrapper.replaceWith(block);
-            }
+            block.style.width = "500px";
+            block.style.height = "20px";
+            block.style.backgroundColor = "black";
+            mediaWrapper.replaceWith(block);
         } break;
         case 3: { // url
             for (let child of accessories.children) {
                 child.style.display = "none";
             }
-            for (let image of findImages(accessories)) {
-                function addUrl() {
-                    let url = image.src;
-                    let link = document.createElement("a");
-                    link.href = url;
-                    link.textContent = url;
-                    mediaWrapper.appendChild(link);
-                }
-                image.complete ? addUrl() : image.addEventListener("load", addUrl);
+            function addUrl() {
+                let url = media.src;
+                let link = document.createElement("a");
+                link.href = url;
+                link.textContent = url;
+                accessories.appendChild(link);
             }
+            media.complete ? addUrl() : media.addEventListener("load", addUrl);
         } break;
         case 4: { // blur
-            for (let image of findImages(accessories)) {
-                image.style.filter = "blur(50px)";
-            }
+            media.style.filter = "blur(50px)";
         } break;
     }
 }
@@ -154,6 +137,14 @@ async function filterMutations(mutations) {
             filterLeafElements(node);
         }
     });
+}
+
+// filter leaves
+async function filterLeaf(node, ancestors, toggle) {
+    // determine if is media
+    if (["IMG", "VIDEO"].includes(node.nodeName)) {
+        filterMedia(node, ancestors, toggle);
+    }
 }
 
 let observer = new MutationObserver(function (mutations) {

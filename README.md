@@ -4,7 +4,13 @@
 2. Go to `chrome://extensions/` in your Chrome browser
 3. Enable developer mode
 4. Click the `Load unpacked` button, and select the folder containing this repository
-5. Go to discord, and click on the extension icon to enable. Extension will work if it says `On`
+5. Go to discord, and click on the extension icon to cycle through toggles. Note: You will need to reload the page for a new toggle to take effect on previously loaded content.
+
+# Toggles
+1. Off - Nothing filtered.
+2. Hide - Replace images with a black box.
+3. Url - Replace images with their URLs.
+4. Blur - Blur images, click to view unblurred image.
 
 # Known Bugs
 

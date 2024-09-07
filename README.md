@@ -14,6 +14,4 @@
 5. Blur - Blur images, click to view unblurred image.
 
 # Known Bugs
-
-* Clicking on the go-to-message button on the reply to a message with an image will reveal the image
-* Images are not hidden in the search menu
+* None currently

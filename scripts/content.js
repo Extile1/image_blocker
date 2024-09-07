@@ -58,14 +58,19 @@ async function filterMessages(node) {
         
         // hide image
         switch (toggle) {
-            case 1: { // hide
-                let block = document.createElement("div");
-                block.style.width = "auto";
-                block.style.height = "20px";
-                block.style.backgroundColor = "black";
-                accessories.replaceWith(block);
+            case 1: { // blank
+                accessories.remove();
             } break;
-            case 2: { // url
+            case 2: { // hide
+                let block = document.createElement("div");
+                if (findImages(accessories).length > 0) {
+                    block.style.width = "auto";
+                    block.style.height = "20px";
+                    block.style.backgroundColor = "black";
+                    accessories.replaceWith(block);
+                }
+            } break;
+            case 3: { // url
                 for (let child of accessories.children) {
                     child.style.display = "none";
                 }
@@ -80,7 +85,7 @@ async function filterMessages(node) {
                     image.complete ? addUrl() : image.addEventListener("load", addUrl);
                 }
             } break;
-            case 3: { // blur
+            case 4: { // blur
                 for (let image of findImages(accessories)) {
                     image.style.filter = "blur(50px)";
                 }

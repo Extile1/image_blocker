@@ -8,9 +8,10 @@
 
 # Toggles
 1. Off - Nothing filtered.
-2. Hide - Replace images with a black box.
-3. Url - Replace images with their URLs.
-4. Blur - Blur images, click to view unblurred image.
+2. Blank - Replace images with nothing.
+3. Hide - Replace images with a black box.
+4. Url - Replace images with their URLs.
+5. Blur - Blur images, click to view unblurred image.
 
 # Known Bugs
 

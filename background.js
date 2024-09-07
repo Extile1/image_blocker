@@ -1,4 +1,4 @@
-const toggles = ["Off", "Hide", "Url", "Blur"];
+const toggles = ["Off", "Blank", "Hide", "Url", "Blur"];
 
 chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.local.get({"toggle": 0}).then((result) => {

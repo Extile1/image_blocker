@@ -4,6 +4,16 @@
 
 const target_ids = ["275277478787022848", "334509537262567424"];
 
+let toggle = null;
+async function getToggle() {
+    let first = toggle == null;
+    toggle = (await chrome.storage.local.get({"toggle": 0})).toggle;
+
+    // filter loaded parts of DOM once toggle updated
+    if (first) filterMutations([{addedNodes: [document.documentElement]}]);
+}
+getToggle();
+
 // message must have "messageListItem_*" as the class
 // return true if message is from any target, otherwise returns false
 function checkAuthor(messageListItem) {
@@ -55,7 +65,7 @@ function getMliIndex(ancestors) {
     return [mliIndex, mliIndex >= 0 && ancestors[mliIndex].nodeName === "DIV"];
 }
 
-function filterMedia(media, ancestors, toggle) {
+function filterMedia(media, ancestors) {
     let [mliIndex, inSearch] = getMliIndex(ancestors);
     if (mliIndex < 0 || !checkAuthor(ancestors[mliIndex])) return;
 
@@ -103,8 +113,7 @@ function filterMedia(media, ancestors, toggle) {
     }
 }
 
-async function filterMutations(mutations) {
-    let toggle = (await chrome.storage.local.get({"toggle": 0})).toggle;
+function filterMutations(mutations) {
     if (toggle === 0) return;
 
     mutations.forEach(function (mutation) {
@@ -128,7 +137,7 @@ async function filterMutations(mutations) {
             // filter leaves
             function filterLeafElements(element) {
                 if (element.children.length === 0) {
-                    filterLeaf(element, ancestors, toggle);
+                    filterLeaf(element, ancestors);
                     return;
                 }
                 
@@ -145,14 +154,15 @@ async function filterMutations(mutations) {
 }
 
 // filter leaves
-async function filterLeaf(node, ancestors, toggle) {
+function filterLeaf(node, ancestors) {
     // determine if is media
     if (["IMG", "VIDEO"].includes(node.nodeName)) {
-        filterMedia(node, ancestors, toggle);
+        filterMedia(node, ancestors);
     }
 }
 
 let observer = new MutationObserver(function (mutations) {
+    getToggle(); // update toggle (not perfect since async but good enough)
     filterMutations(mutations);
 });
 
@@ -161,6 +171,3 @@ observer.observe(document.body, {
     subtree: true,
     attributes: true
 });
-
-// filter loaded parts of DOM
-filterMutations([{addedNodes: [document.documentElement]}]);
